@@ -73,13 +73,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, username: string, fullName: string) => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
           data: {
             username,
             full_name: fullName
@@ -96,7 +93,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         toast({
           title: "Success",
-          description: "Registrasi berhasil! Silakan cek email untuk verifikasi."
+          description: "Registrasi berhasil! Selamat datang!"
         });
       }
       
