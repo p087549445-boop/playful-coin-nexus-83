@@ -12,6 +12,8 @@ import Games from "./pages/Games";
 import TopUp from "./pages/TopUp";
 import Profile from "./pages/Profile";
 import AdminTopUp from "./pages/AdminTopUp";
+import AdminUsers from "./pages/AdminUsers";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -83,6 +85,24 @@ const App = () => (
                   <Layout>
                     <ProtectedRoute requiredRole="admin">
                       <AdminTopUp />
+                    </ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/users" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProtectedRoute requiredRole="admin">
+                      <AdminUsers />
+                    </ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/analytics" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProtectedRoute requiredRole="admin">
+                      <AdminAnalytics />
                     </ProtectedRoute>
                   </Layout>
                 </ProtectedRoute>
