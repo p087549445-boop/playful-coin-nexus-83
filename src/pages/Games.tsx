@@ -7,11 +7,13 @@ import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Dice1, Dice6, Coins, Trophy, Play } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Games() {
   const { user } = useAuth();
   const { profile, refetch } = useProfile();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [gameLoading, setGameLoading] = useState<string | null>(null);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
@@ -174,7 +176,7 @@ export default function Games() {
   };
 
   const handleGameClick = (gameId: string) => {
-    setSelectedGame(gameId);
+    navigate(`/games/${gameId}`);
   };
 
   const renderGameInterface = (game: any) => {

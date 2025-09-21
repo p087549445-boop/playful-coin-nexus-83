@@ -9,6 +9,12 @@ import Layout from "@/components/Layout";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Games from "./pages/Games";
+import GameDice from "./pages/GameDice";
+import GameCoinFlip from "./pages/GameCoinFlip";
+import GameSlots from "./pages/GameSlots";
+import GameRoulette from "./pages/GameRoulette";
+import GameBlackjack from "./pages/GameBlackjack";
+import GameLottery from "./pages/GameLottery";
 import TopUp from "./pages/TopUp";
 import Profile from "./pages/Profile";
 import AdminTopUp from "./pages/AdminTopUp";
@@ -49,6 +55,60 @@ const App = () => (
                   <Layout>
                     <ProtectedRoute requiredRole="user">
                       <Games />
+                    </ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/games/dice" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProtectedRoute requiredRole="user">
+                      <GameDice />
+                    </ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/games/coinflip" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProtectedRoute requiredRole="user">
+                      <GameCoinFlip />
+                    </ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/games/slots" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProtectedRoute requiredRole="user">
+                      <GameSlots />
+                    </ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/games/roulette" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProtectedRoute requiredRole="user">
+                      <GameRoulette />
+                    </ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/games/blackjack" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProtectedRoute requiredRole="user">
+                      <GameBlackjack />
+                    </ProtectedRoute>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/games/lottery" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProtectedRoute requiredRole="user">
+                      <GameLottery />
                     </ProtectedRoute>
                   </Layout>
                 </ProtectedRoute>

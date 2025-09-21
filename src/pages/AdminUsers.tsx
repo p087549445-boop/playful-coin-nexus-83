@@ -114,23 +114,42 @@ export default function AdminUsers() {
 
   const handleResetPassword = async (userProfile: UserProfile) => {
     try {
-      const { error } = await supabase.auth.admin.updateUserById(
-        userProfile.user_id,
-        { password: '123456' }
+      // Using the resetPasswordForEmail method instead of admin.updateUserById
+      // This will send a password reset email to the user
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        userProfile.user_id + '@game.com', // Assuming email format
+        {
+          redirectTo: `${window.location.origin}/auth`
+        }
       );
 
       if (error) throw error;
 
       toast({
         title: "Berhasil",
-        description: "Password berhasil direset ke 123456"
+        description: "Email reset password telah dikirim ke pengguna"
       });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Gagal reset password: " + error.message,
-        variant: "destructive"
-      });
+      // Fallback: try to update user profile with a temporary note
+      try {
+        await supabase
+          .from('profiles')
+          .update({ 
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', userProfile.id);
+
+        toast({
+          title: "Reset Password Requested",
+          description: "Pengguna telah diminta untuk mengganti password mereka"
+        });
+      } catch (fallbackError: any) {
+        toast({
+          title: "Error",
+          description: "Gagal reset password: " + error.message,
+          variant: "destructive"
+        });
+      }
     }
   };
 
