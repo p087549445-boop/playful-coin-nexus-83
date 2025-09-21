@@ -101,10 +101,20 @@ export default function AdminTopUp() {
         notes: adminNotes[requestId] || null
       });
 
-      if (error || !data) {
+      if (error) {
+        console.error('Approval error:', error);
         toast({
           title: "Error",
-          description: "Gagal menyetujui permintaan. Pastikan saldo admin mencukupi.",
+          description: error.message || "Gagal menyetujui permintaan. Pastikan saldo admin mencukupi.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!data) {
+        toast({
+          title: "Error", 
+          description: "Permintaan tidak dapat diproses. Periksa status permintaan.",
           variant: "destructive"
         });
         return;
