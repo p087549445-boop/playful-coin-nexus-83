@@ -1,37 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from './useAuth';
 
 export const useAdminBalance = () => {
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    fetchBalance();
-    
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('admin-balance-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'admin_balance'
-        },
-        (payload) => {
-          if (payload.eventType === 'UPDATE' && payload.new) {
-            setBalance(payload.new.balance);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const { user } = useAuth();
 
   const fetchBalance = async () => {
     try {
@@ -42,24 +16,40 @@ export const useAdminBalance = () => {
 
       if (error) {
         console.error('Error fetching admin balance:', error);
-        toast({
-          title: "Error",
-          description: "Gagal mengambil data balance admin",
-          variant: "destructive"
-        });
-      } else {
-        setBalance(data.balance);
+        return;
       }
+
+      setBalance(data?.balance || 0);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching admin balance:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  return {
-    balance,
-    loading,
-    refetch: fetchBalance
-  };
+  useEffect(() => {
+    if (user) {
+      fetchBalance();
+      
+      // Set up real-time subscription
+      const channel = supabase
+        .channel('admin_balance_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'admin_balance'
+          },
+          () => fetchBalance()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  return { balance, loading, refetch: fetchBalance };
 };

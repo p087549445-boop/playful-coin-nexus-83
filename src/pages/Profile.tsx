@@ -4,384 +4,197 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { User, Coins, History, Trophy } from 'lucide-react';
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { User, Coins, Activity } from "lucide-react";
 
-interface Transaction {
-  id: string;
-  transaction_type: string;
-  amount: number;
-  description: string;
-  created_at: string;
-}
-
-interface GameSession {
-  id: string;
-  game_type: string;
-  result: string;
-  coins_spent: number;
-  coins_won: number;
-  created_at: string;
-}
-
-const Profile = () => {
-  const { user } = useAuth();
-  const { profile, refetch } = useProfile();
+export default function Profile() {
+  const { user, signOut } = useAuth();
+  const { profile, loading, refetch } = useProfile();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    username: '',
-    full_name: ''
-  });
+  const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (profile) {
-      setFormData({
-        username: profile.username,
-        full_name: profile.full_name
-      });
+      setFullName(profile.full_name || '');
+      setUsername(profile.username || '');
     }
   }, [profile]);
 
-  useEffect(() => {
-    if (user) {
-      fetchTransactions();
-      fetchGameSessions();
-    }
-  }, [user]);
-
-  const fetchTransactions = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        throw error;
-      }
-
-      setTransactions(data || []);
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-    }
-  };
-
-  const fetchGameSessions = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('game_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        throw error;
-      }
-
-      setGameSessions(data || []);
-    } catch (error) {
-      console.error('Error fetching game sessions:', error);
-    }
-  };
-
-  const updateProfile = async () => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!user || !profile) return;
 
-    setLoading(true);
+    setUpdating(true);
+
     try {
       const { error } = await supabase
         .from('profiles')
         .update({
-          username: formData.username,
-          full_name: formData.full_name,
+          full_name: fullName,
+          username: username,
         })
         .eq('user_id', user.id);
 
       if (error) {
-        throw error;
+        toast({
+          title: "Error",
+          description: "Gagal memperbarui profil",
+          variant: "destructive"
+        });
+        return;
       }
 
       toast({
         title: "Success",
-        description: "Profil berhasil diperbarui",
+        description: "Profil berhasil diperbarui!"
       });
 
-      setIsEditing(false);
       refetch();
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('Profile update error:', error);
       toast({
         title: "Error",
-        description: "Gagal memperbarui profil",
+        description: "Terjadi kesalahan saat memperbarui profil",
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setUpdating(false);
     }
   };
 
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case 'topup':
-        return '💰';
-      case 'game_win':
-        return '🏆';
-      case 'game_loss':
-        return '🎲';
-      default:
-        return '💸';
-    }
-  };
-
-  const getTransactionColor = (type: string) => {
-    switch (type) {
-      case 'topup':
-      case 'game_win':
-        return 'text-green-600';
-      case 'game_loss':
-        return 'text-red-600';
-      default:
-        return 'text-muted-foreground';
-    }
-  };
-
-  if (!profile) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
-
-  // Calculate stats
-  const totalGamesPlayed = gameSessions.length;
-  const totalWins = gameSessions.filter(session => session.result === 'win').length;
-  const totalCoinsWon = gameSessions.reduce((sum, session) => sum + session.coins_won, 0);
-  const totalCoinsSpent = gameSessions.reduce((sum, session) => sum + session.coins_spent, 0);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold text-foreground">Profile</h1>
-        <p className="text-muted-foreground">
-          Kelola informasi dan lihat statistik gaming Anda
-        </p>
+        <h1 className="text-3xl font-bold text-foreground">Profil Saya</h1>
+        <p className="text-muted-foreground">Kelola informasi akun Anda</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Profile Information */}
-        <Card>
+        {/* Profile Info */}
+        <Card className="bg-card">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <User className="h-5 w-5" />
-              <span>Informasi Profil</span>
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              <CardTitle className="text-card-foreground">Informasi Profil</CardTitle>
+            </div>
             <CardDescription>
-              Data pribadi dan informasi akun
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isEditing ? (
-              <>
-                <div>
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    value={formData.username}
-                    onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="full-name">Nama Lengkap</Label>
-                  <Input
-                    id="full-name"
-                    value={formData.full_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                  />
-                </div>
-                <div className="flex space-x-2">
-                  <Button onClick={updateProfile} disabled={loading}>
-                    {loading ? "Saving..." : "Save"}
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Username:</span>
-                    <span>{profile.username}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Nama Lengkap:</span>
-                    <span>{profile.full_name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Email:</span>
-                    <span>{user?.email}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Role:</span>
-                    <Badge variant={profile.role === 'admin' ? 'default' : 'secondary'}>
-                      {profile.role}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Coin Balance:</span>
-                    <span className="font-bold text-primary">
-                      {profile.coin_balance.toLocaleString()} coins
-                    </span>
-                  </div>
-                </div>
-                <Button onClick={() => setIsEditing(true)} className="w-full">
-                  Edit Profile
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Gaming Statistics */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Trophy className="h-5 w-5" />
-              <span>Statistik Gaming</span>
-            </CardTitle>
-            <CardDescription>
-              Performa dan aktivitas gaming Anda
+              Perbarui informasi pribadi Anda
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-muted rounded-lg">
-                <div className="text-2xl font-bold">{totalGamesPlayed}</div>
-                <div className="text-sm text-muted-foreground">Games Played</div>
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
               </div>
-              <div className="text-center p-4 bg-muted rounded-lg">
-                <div className="text-2xl font-bold">{totalWins}</div>
-                <div className="text-sm text-muted-foreground">Games Won</div>
+
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
               </div>
-              <div className="text-center p-4 bg-muted rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  +{totalCoinsWon.toLocaleString()}
-                </div>
-                <div className="text-sm text-muted-foreground">Coins Won</div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Nama Lengkap</Label>
+                <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
               </div>
-              <div className="text-center p-4 bg-muted rounded-lg">
-                <div className="text-2xl font-bold text-red-600">
-                  -{totalCoinsSpent.toLocaleString()}
-                </div>
-                <div className="text-sm text-muted-foreground">Coins Spent</div>
-              </div>
-            </div>
+
+              <Button type="submit" className="w-full" disabled={updating}>
+                {updating ? 'Menyimpan...' : 'Perbarui Profil'}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
-        {/* Recent Transactions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <History className="h-5 w-5" />
-              <span>Transaksi Terbaru</span>
-            </CardTitle>
-            <CardDescription>
-              10 transaksi terakhir Anda
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {transactions.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">
-                  Belum ada transaksi
-                </p>
-              ) : (
-                transactions.map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between py-2 border-b">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-lg">
-                        {getTransactionIcon(transaction.transaction_type)}
-                      </span>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {transaction.description}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(transaction.created_at).toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`font-semibold ${getTransactionColor(transaction.transaction_type)}`}>
-                      {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Account Info */}
+        <div className="space-y-6">
+          <Card className="bg-card">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Coins className="h-5 w-5 text-primary" />
+                <CardTitle className="text-card-foreground">Saldo Coins</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-primary mb-2">
+                  {profile?.coin_balance?.toLocaleString() || 0}
+                </div>
+                <p className="text-muted-foreground">Total Coins</p>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Recent Game Sessions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Trophy className="h-5 w-5" />
-              <span>Game Terbaru</span>
-            </CardTitle>
-            <CardDescription>
-              10 game session terakhir
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {gameSessions.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">
-                  Belum ada game session
-                </p>
-              ) : (
-                gameSessions.map((session) => (
-                  <div key={session.id} className="flex items-center justify-between py-2 border-b">
-                    <div>
-                      <p className="text-sm font-medium">{session.game_type}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(session.created_at).toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={session.result === 'win' ? 'default' : 'destructive'}>
-                        {session.result === 'win' ? 'Win' : 'Lose'}
-                      </Badge>
-                      <p className="text-xs mt-1">
-                        {session.result === 'win' ? '+' : '-'}{session.coins_spent} coins
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          <Card className="bg-card">
+            <CardHeader>
+              <CardTitle className="text-card-foreground">Akun</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Status:</span>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Activity className="h-3 w-3" />
+                  Aktif
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Role:</span>
+                <Badge variant="secondary">
+                  {profile?.role || 'user'}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Bergabung:</span>
+                <span className="text-sm text-card-foreground">
+                  {profile?.created_at && new Date(profile.created_at).toLocaleDateString('id-ID')}
+                </span>
+              </div>
+
+              <Button 
+                variant="destructive" 
+                onClick={signOut}
+                className="w-full"
+              >
+                Logout
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
-};
-
-export default Profile;
+}

@@ -1,296 +1,267 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Coins, Trophy } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Dice1, Dice6, Coins, Trophy } from "lucide-react";
 
-const Games = () => {
+export default function Games() {
   const { user } = useAuth();
   const { profile, refetch } = useProfile();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  
-  // Dice Game State
-  const [diceRoll, setDiceRoll] = useState<number | null>(null);
-  const [diceBet, setDiceBet] = useState<number>(10);
-  const [diceGuess, setDiceGuess] = useState<number>(1);
-  
-  // Coin Flip State
-  const [coinResult, setCoinResult] = useState<string | null>(null);
-  const [coinBet, setCoinBet] = useState<number>(10);
-  const [coinGuess, setCoinGuess] = useState<string>('heads');
+  const [gameLoading, setGameLoading] = useState<string | null>(null);
 
-  const getDiceIcon = (number: number) => {
-    const icons = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
-    const Icon = icons[number - 1];
-    return <Icon className="w-16 h-16" />;
-  };
-
-  const playDiceGame = async () => {
+  const playDiceGame = async (betAmount: number) => {
     if (!user || !profile) return;
     
-    if (profile.coin_balance < diceBet) {
+    if (profile.coin_balance < betAmount) {
       toast({
         title: "Insufficient Coins",
-        description: "Anda tidak memiliki cukup coin untuk bermain",
+        description: "Anda tidak memiliki cukup coins untuk bermain",
         variant: "destructive"
       });
       return;
     }
 
-    setLoading(true);
+    setGameLoading('dice');
+    
     try {
-      const roll = Math.floor(Math.random() * 6) + 1;
-      setDiceRoll(roll);
-      
-      const isWin = roll === diceGuess;
-      const coinsWon = isWin ? diceBet * 2 : 0;
-      
+      // Generate random result (1-6)
+      const diceResult = Math.floor(Math.random() * 6) + 1;
+      const isWin = diceResult >= 4; // Win if dice shows 4, 5, or 6
+      const coinsWon = isWin ? betAmount * 2 : 0;
+
       const { error } = await supabase.rpc('process_game_result', {
         p_user_id: user.id,
-        p_game_type: 'Dice Roll',
-        p_result: isWin ? 'win' : 'lose',
-        p_coins_spent: diceBet,
+        p_game_type: 'dice',
+        p_result: `Dice: ${diceResult} - ${isWin ? 'Win' : 'Lose'}`,
+        p_coins_spent: betAmount,
         p_coins_won: coinsWon
       });
 
       if (error) {
-        throw error;
+        toast({
+          title: "Game Error",
+          description: "Terjadi kesalahan saat memproses permainan",
+          variant: "destructive"
+        });
+        return;
       }
 
       toast({
-        title: isWin ? "Congratulations!" : "Better luck next time!",
-        description: isWin 
-          ? `Anda menang ${coinsWon} coins! Tebakan Anda benar: ${roll}`
-          : `Anda kalah ${diceBet} coins. Hasilnya: ${roll}, tebakan Anda: ${diceGuess}`,
+        title: isWin ? "Menang!" : "Kalah!",
+        description: `Dadu: ${diceResult} - ${isWin ? `Anda memenangkan ${coinsWon} coins!` : `Anda kehilangan ${betAmount} coins`}`,
         variant: isWin ? "default" : "destructive"
       });
 
+      // Refresh profile to update coin balance
       refetch();
     } catch (error) {
-      console.error('Error playing dice game:', error);
+      console.error('Game error:', error);
       toast({
         title: "Error",
-        description: "Terjadi kesalahan saat bermain game",
+        description: "Terjadi kesalahan saat bermain",
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setGameLoading(null);
     }
   };
 
-  const playCoinFlip = async () => {
+  const playCoinFlip = async (betAmount: number, choice: 'heads' | 'tails') => {
     if (!user || !profile) return;
     
-    if (profile.coin_balance < coinBet) {
+    if (profile.coin_balance < betAmount) {
       toast({
         title: "Insufficient Coins",
-        description: "Anda tidak memiliki cukup coin untuk bermain",
+        description: "Anda tidak memiliki cukup coins untuk bermain",
         variant: "destructive"
       });
       return;
     }
 
-    setLoading(true);
+    setGameLoading('coinflip');
+    
     try {
-      const result = Math.random() < 0.5 ? 'heads' : 'tails';
-      setCoinResult(result);
-      
-      const isWin = result === coinGuess;
-      const coinsWon = isWin ? coinBet * 2 : 0;
-      
+      // Generate random result
+      const flipResult = Math.random() < 0.5 ? 'heads' : 'tails';
+      const isWin = flipResult === choice;
+      const coinsWon = isWin ? betAmount * 2 : 0;
+
       const { error } = await supabase.rpc('process_game_result', {
         p_user_id: user.id,
-        p_game_type: 'Coin Flip',
-        p_result: isWin ? 'win' : 'lose',
-        p_coins_spent: coinBet,
+        p_game_type: 'coinflip',
+        p_result: `Choice: ${choice}, Result: ${flipResult} - ${isWin ? 'Win' : 'Lose'}`,
+        p_coins_spent: betAmount,
         p_coins_won: coinsWon
       });
 
       if (error) {
-        throw error;
+        toast({
+          title: "Game Error",
+          description: "Terjadi kesalahan saat memproses permainan",
+          variant: "destructive"
+        });
+        return;
       }
 
       toast({
-        title: isWin ? "Congratulations!" : "Better luck next time!",
-        description: isWin 
-          ? `Anda menang ${coinsWon} coins! Tebakan Anda benar: ${result}`
-          : `Anda kalah ${coinBet} coins. Hasilnya: ${result}, tebakan Anda: ${coinGuess}`,
+        title: isWin ? "Menang!" : "Kalah!",
+        description: `Pilihan: ${choice}, Hasil: ${flipResult} - ${isWin ? `Anda memenangkan ${coinsWon} coins!` : `Anda kehilangan ${betAmount} coins`}`,
         variant: isWin ? "default" : "destructive"
       });
 
+      // Refresh profile to update coin balance
       refetch();
     } catch (error) {
-      console.error('Error playing coin flip:', error);
+      console.error('Game error:', error);
       toast({
         title: "Error",
-        description: "Terjadi kesalahan saat bermain game",
+        description: "Terjadi kesalahan saat bermain",
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setGameLoading(null);
     }
   };
-
-  if (!profile) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold text-foreground">Game Center</h1>
-        <p className="text-muted-foreground">
-          Mainkan game dan menangkan coins!
-        </p>
-        <div className="flex items-center space-x-2 text-lg font-semibold">
-          <Coins className="h-5 w-5 text-primary" />
-          <span>Balance: {profile.coin_balance.toLocaleString()} coins</span>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground">Games</h1>
+        <p className="text-muted-foreground">Bermain dan menangkan coins!</p>
       </div>
 
+      {/* Current Balance */}
+      <Card className="bg-card">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Coins className="h-5 w-5 text-primary" />
+              <span className="text-lg font-semibold text-card-foreground">
+                Saldo Anda: {profile?.coin_balance?.toLocaleString() || 0} coins
+              </span>
+            </div>
+            <Badge variant="outline">
+              <Trophy className="h-3 w-3 mr-1" />
+              Level 1
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Games Grid */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Dice Game */}
-        <Card>
+        <Card className="bg-card">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Trophy className="h-5 w-5" />
-              <span>Dice Roll Game</span>
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Dice6 className="h-6 w-6 text-primary" />
+              <CardTitle className="text-card-foreground">Dice Game</CardTitle>
+            </div>
             <CardDescription>
-              Tebak angka yang akan keluar pada dadu (1-6). Menang 2x lipat!
+              Lempar dadu dan menang jika keluar 4, 5, atau 6!
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-center py-8">
-              {diceRoll ? (
-                <div className="text-center">
-                  {getDiceIcon(diceRoll)}
-                  <p className="mt-2 text-lg font-bold">Hasil: {diceRoll}</p>
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  <Dice1 className="w-16 h-16 mx-auto opacity-50" />
-                  <p className="mt-2">Belum bermain</p>
-                </div>
-              )}
+            <div className="grid gap-2">
+              <p className="text-sm text-muted-foreground">
+                • Menang jika dadu menunjukkan 4, 5, atau 6
+              </p>
+              <p className="text-sm text-muted-foreground">
+                • Hadiah: 2x lipat dari taruhan
+              </p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="dice-bet">Jumlah Bet</Label>
-                <Input
-                  id="dice-bet"
-                  type="number"
-                  min="1"
-                  max={profile.coin_balance}
-                  value={diceBet}
-                  onChange={(e) => setDiceBet(Number(e.target.value))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="dice-guess">Tebakan (1-6)</Label>
-                <Input
-                  id="dice-guess"
-                  type="number"
-                  min="1"
-                  max="6"
-                  value={diceGuess}
-                  onChange={(e) => setDiceGuess(Number(e.target.value))}
-                />
+            <div className="grid gap-2">
+              <h4 className="font-medium text-card-foreground">Pilih Taruhan:</h4>
+              <div className="grid grid-cols-3 gap-2">
+                {[50, 100, 200].map(amount => (
+                  <Button
+                    key={amount}
+                    variant="outline"
+                    onClick={() => playDiceGame(amount)}
+                    disabled={gameLoading === 'dice' || (profile?.coin_balance || 0) < amount}
+                    className="flex flex-col gap-1"
+                  >
+                    <Coins className="h-4 w-4" />
+                    {amount}
+                  </Button>
+                ))}
               </div>
             </div>
-            
-            <Button 
-              onClick={playDiceGame} 
-              disabled={loading || profile.coin_balance < diceBet}
-              className="w-full"
-            >
-              {loading ? "Rolling..." : `Play (${diceBet} coins)`}
-            </Button>
           </CardContent>
         </Card>
 
         {/* Coin Flip Game */}
-        <Card>
+        <Card className="bg-card">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Coins className="h-5 w-5" />
-              <span>Coin Flip Game</span>
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Dice1 className="h-6 w-6 text-primary" />
+              <CardTitle className="text-card-foreground">Coin Flip</CardTitle>
+            </div>
             <CardDescription>
-              Tebak sisi koin (heads/tails). Menang 2x lipat!
+              Pilih kepala atau ekor dan menangkan 2x lipat!
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-center py-8">
-              {coinResult ? (
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg">
-                    {coinResult === 'heads' ? 'H' : 'T'}
-                  </div>
-                  <p className="mt-2 text-lg font-bold capitalize">
-                    Hasil: {coinResult === 'heads' ? 'Heads' : 'Tails'}
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
-                    <Coins className="w-8 h-8" />
-                  </div>
-                  <p className="mt-2">Belum bermain</p>
-                </div>
-              )}
+            <div className="grid gap-2">
+              <p className="text-sm text-muted-foreground">
+                • Pilih kepala (heads) atau ekor (tails)
+              </p>
+              <p className="text-sm text-muted-foreground">
+                • Hadiah: 2x lipat dari taruhan
+              </p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="coin-bet">Jumlah Bet</Label>
-                <Input
-                  id="coin-bet"
-                  type="number"
-                  min="1"
-                  max={profile.coin_balance}
-                  value={coinBet}
-                  onChange={(e) => setCoinBet(Number(e.target.value))}
-                />
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <h4 className="font-medium text-card-foreground">Taruhan 100 coins:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => playCoinFlip(100, 'heads')}
+                    disabled={gameLoading === 'coinflip' || (profile?.coin_balance || 0) < 100}
+                  >
+                    Kepala
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => playCoinFlip(100, 'tails')}
+                    disabled={gameLoading === 'coinflip' || (profile?.coin_balance || 0) < 100}
+                  >
+                    Ekor
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="coin-guess">Tebakan</Label>
-                <select
-                  id="coin-guess"
-                  value={coinGuess}
-                  onChange={(e) => setCoinGuess(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <option value="heads">Heads</option>
-                  <option value="tails">Tails</option>
-                </select>
+              
+              <div className="grid gap-2">
+                <h4 className="font-medium text-card-foreground">Taruhan 200 coins:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => playCoinFlip(200, 'heads')}
+                    disabled={gameLoading === 'coinflip' || (profile?.coin_balance || 0) < 200}
+                  >
+                    Kepala
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => playCoinFlip(200, 'tails')}
+                    disabled={gameLoading === 'coinflip' || (profile?.coin_balance || 0) < 200}
+                  >
+                    Ekor
+                  </Button>
+                </div>
               </div>
             </div>
-            
-            <Button 
-              onClick={playCoinFlip} 
-              disabled={loading || profile.coin_balance < coinBet}
-              className="w-full"
-            >
-              {loading ? "Flipping..." : `Play (${coinBet} coins)`}
-            </Button>
           </CardContent>
         </Card>
       </div>
     </div>
   );
-};
-
-export default Games;
+}

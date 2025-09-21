@@ -1,84 +1,48 @@
-import { useEffect, useRef } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from 'react';
+import { useAuth } from './useAuth';
 
 export const useAutoLogout = () => {
   const { signOut, user } = useAuth();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  let inactivityTimer: NodeJS.Timeout;
 
-  const resetInactivityTimer = () => {
-    if (inactivityTimeoutRef.current) {
-      clearTimeout(inactivityTimeoutRef.current);
-    }
-    
+  const resetTimer = () => {
+    clearTimeout(inactivityTimer);
     if (user) {
-      // Set inactivity timeout for 2 minutes (120000 ms)
-      inactivityTimeoutRef.current = setTimeout(() => {
+      inactivityTimer = setTimeout(() => {
         signOut();
-      }, 120000);
+      }, 2 * 60 * 1000); // 2 minutes
     }
+  };
+
+  const handleActivity = () => {
+    resetTimer();
   };
 
   useEffect(() => {
     if (!user) return;
 
-    // Events to track user activity
+    // Set up activity listeners
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
-    // Reset timer on any user activity
-    const resetTimer = () => resetInactivityTimer();
-    
-    // Add event listeners
     events.forEach(event => {
-      document.addEventListener(event, resetTimer, true);
+      document.addEventListener(event, handleActivity, true);
     });
 
-    // Start the inactivity timer
-    resetInactivityTimer();
-
-    // Handle tab/window close
-    const handleBeforeUnload = () => {
+    // Set up beforeunload listener for tab close
+    const beforeUnloadListener = () => {
       signOut();
     };
+    window.addEventListener('beforeunload', beforeUnloadListener);
 
-    // Handle visibility change (tab switch)
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // User switched tabs or minimized window
-        timeoutRef.current = setTimeout(() => {
-          signOut();
-        }, 1000); // 1 second delay for tab switching
-      } else {
-        // User came back to tab
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
-        resetInactivityTimer();
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Start the timer
+    resetTimer();
 
     return () => {
-      // Cleanup event listeners
+      // Clean up listeners
       events.forEach(event => {
-        document.removeEventListener(event, resetTimer, true);
+        document.removeEventListener(event, handleActivity, true);
       });
-      
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      
-      if (inactivityTimeoutRef.current) {
-        clearTimeout(inactivityTimeoutRef.current);
-      }
+      window.removeEventListener('beforeunload', beforeUnloadListener);
+      clearTimeout(inactivityTimer);
     };
   }, [user, signOut]);
-
-  return null;
 };
