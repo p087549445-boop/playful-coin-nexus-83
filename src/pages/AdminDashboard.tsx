@@ -1,15 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminBalance } from "@/hooks/useAdminBalance";
-import { Users, Gamepad2, CreditCard, TrendingUp, Coins } from "lucide-react";
+import { useAdminStats } from "@/hooks/useAdminStats";
+import { Users, Gamepad2, CreditCard, TrendingUp, Coins, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { profile, loading } = useProfile();
   const { balance } = useAdminBalance();
+  const { stats, loading: statsLoading } = useAdminStats();
+  const navigate = useNavigate();
 
-  if (loading) {
+  if (loading || statsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
@@ -51,8 +56,8 @@ export default function AdminDashboard() {
             <Gamepad2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">12,345</div>
-            <p className="text-xs text-muted-foreground">+180.1% dari bulan lalu</p>
+            <div className="text-2xl font-bold text-card-foreground">{stats.gameSessions.total.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">{stats.gameSessions.growth.startsWith('-') ? '' : '+'}{stats.gameSessions.growth} dari bulan lalu</p>
           </CardContent>
         </Card>
 
@@ -62,8 +67,8 @@ export default function AdminDashboard() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">Rp 45,231,890</div>
-            <p className="text-xs text-muted-foreground">+19% dari bulan lalu</p>
+            <div className="text-2xl font-bold text-card-foreground">{stats.totalRevenue.amount.toLocaleString()} coins</div>
+            <p className="text-xs text-muted-foreground">{stats.totalRevenue.growth.startsWith('-') ? '' : '+'}{stats.totalRevenue.growth} dari bulan lalu</p>
           </CardContent>
         </Card>
 
@@ -73,8 +78,8 @@ export default function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">573</div>
-            <p className="text-xs text-muted-foreground">+201 sejak 1 jam lalu</p>
+            <div className="text-2xl font-bold text-card-foreground">{stats.activePlayers.count}</div>
+            <p className="text-xs text-muted-foreground">+{stats.activePlayers.recentIncrease} sejak 1 jam lalu</p>
           </CardContent>
         </Card>
       </div>
@@ -114,12 +119,31 @@ export default function AdminDashboard() {
             <CardDescription>Aksi cepat untuk admin</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid gap-2">
-              <div className="text-sm text-muted-foreground">• Kelola pengguna dan role</div>
-              <div className="text-sm text-muted-foreground">• Pantau aktivitas gaming</div>
-              <div className="text-sm text-muted-foreground">• Proses permintaan top-up</div>
-              <div className="text-sm text-muted-foreground">• Lihat laporan keuangan</div>
-              <div className="text-sm text-muted-foreground">• Atur konfigurasi sistem</div>
+            <div className="grid gap-3">
+              <Button 
+                variant="outline" 
+                className="justify-start" 
+                onClick={() => navigate('/admin/users')}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Kelola Pengguna
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start"
+                onClick={() => navigate('/admin/analytics')}
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Lihat Analytics
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start"
+                onClick={() => navigate('/admin/topup')}
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                Kelola Top-Up
+              </Button>
             </div>
           </CardContent>
         </Card>
