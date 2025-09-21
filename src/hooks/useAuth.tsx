@@ -23,10 +23,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Handle single device login enforcement
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Remove any existing sessions for this user
+          await supabase
+            .from('user_sessions')
+            .delete()
+            .eq('user_id', session.user.id);
+
+          // Add new session
+          await supabase
+            .from('user_sessions')
+            .insert({
+              user_id: session.user.id,
+              session_id: session.access_token
+            });
+        }
+
+        if (event === 'SIGNED_OUT') {
+          // Clean up session records on logout
+          const userId = session?.user?.id;
+          if (userId) {
+            await supabase
+              .from('user_sessions')
+              .delete()
+              .eq('user_id', userId);
+          }
+        }
       }
     );
 
@@ -109,7 +137,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    
     await supabase.auth.signOut();
+    
+    // Clean up session records
+    if (userId) {
+      await supabase
+        .from('user_sessions')
+        .delete()
+        .eq('user_id', userId);
+    }
+    
     toast({
       title: "Success",
       description: "Logout berhasil!"

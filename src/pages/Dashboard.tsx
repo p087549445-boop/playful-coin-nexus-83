@@ -68,16 +68,14 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Selamat datang, {profile?.full_name || profile?.username}!
-          </p>
-        </div>
-        <Badge variant={profile?.role === 'admin' ? 'default' : 'secondary'}>
-          {profile?.role === 'admin' ? 'Admin' : 'User'}
-        </Badge>
+      {/* Header */}
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-bold text-foreground">
+          Selamat datang di Dashboard User
+        </h1>
+        <p className="text-muted-foreground">
+          Nikmati pengalaman gaming terbaik Anda
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -37,7 +37,7 @@ export function AppSidebar() {
   ];
 
   const adminItems = [
-    { title: "Dashboard", url: "/", icon: Home },
+    { title: "Dashboard", url: "/admin", icon: Home },
     { title: "Users", url: "/admin/users", icon: Users },
     { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
     { title: "Top Up Requests", url: "/admin/topup", icon: CreditCard },
