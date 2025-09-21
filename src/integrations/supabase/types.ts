@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_balance: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       game_sessions: {
         Row: {
           coins_spent: number
@@ -113,6 +134,39 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          game_session_id: string | null
+          id: string
+          topup_request_id: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          game_session_id?: string | null
+          id?: string
+          topup_request_id?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          game_session_id?: string | null
+          id?: string
+          topup_request_id?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_sessions: {
         Row: {
           created_at: string | null
@@ -142,9 +196,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_topup_request: {
+        Args: { admin_id: string; notes?: string; request_id: string }
+        Returns: boolean
+      }
       is_admin: {
         Args: { user_uuid: string }
         Returns: boolean
+      }
+      process_game_result: {
+        Args: {
+          p_coins_spent: number
+          p_coins_won: number
+          p_game_type: string
+          p_result: string
+          p_user_id: string
+        }
+        Returns: string
       }
     }
     Enums: {

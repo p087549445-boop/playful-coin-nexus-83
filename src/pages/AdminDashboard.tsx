@@ -1,11 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { Users, Gamepad2, CreditCard, TrendingUp } from "lucide-react";
+import { useAdminBalance } from "@/hooks/useAdminBalance";
+import { Users, Gamepad2, CreditCard, TrendingUp, Coins } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { profile, loading } = useProfile();
+  const { balance } = useAdminBalance();
 
   if (loading) {
     return (
@@ -34,12 +36,12 @@ export default function AdminDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-card-foreground">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-card-foreground">Admin Balance</CardTitle>
+            <Coins className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">1,234</div>
-            <p className="text-xs text-muted-foreground">+20.1% dari bulan lalu</p>
+            <div className="text-2xl font-bold text-card-foreground">{balance.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">coins tersedia</p>
           </CardContent>
         </Card>
 
