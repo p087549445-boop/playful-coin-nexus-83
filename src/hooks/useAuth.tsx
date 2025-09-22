@@ -65,12 +65,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Set up real-time listener for ban status changes
+    let banStatusChannel: any = null;
+    
+    const setupBanListener = (userId: string) => {
+      banStatusChannel = supabase
+        .channel('ban-status-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `user_id=eq.${userId}`
+          },
+          (payload) => {
+            if (payload.new?.is_banned) {
+              toast({
+                title: "Akun Ditangguhkan",
+                description: "Akun Anda telah ditangguhkan karena dicurigai melakukan penyalahgunaan kebijakan kami. Anda akan keluar secara otomatis.",
+                variant: "destructive"
+              });
+              setTimeout(() => {
+                supabase.auth.signOut();
+              }, 3000);
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    // Set up ban listener when user is authenticated
+    if (session?.user) {
+      setupBanListener(session.user.id);
+    } else if (user) {
+      setupBanListener(user.id);
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      if (banStatusChannel) {
+        supabase.removeChannel(banStatusChannel);
+      }
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -81,12 +123,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           description: error.message,
           variant: "destructive"
         });
-      } else {
-        toast({
-          title: "Success",
-          description: "Login berhasil!"
-        });
+        return { error };
       }
+
+      // Check if user is banned after successful authentication
+      if (data.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_banned, ban_reason')
+          .eq('user_id', data.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error checking ban status:', profileError);
+          toast({
+            title: "Error",
+            description: "Terjadi kesalahan saat memverifikasi akun",
+            variant: "destructive"
+          });
+          await supabase.auth.signOut();
+          return { error: profileError };
+        }
+
+        if (profile?.is_banned) {
+          await supabase.auth.signOut();
+          const banMessage = profile.ban_reason || "pelanggaran kebijakan kami";
+          toast({
+            title: "Akun Ditangguhkan",
+            description: `Akun Anda telah ditangguhkan karena ${banMessage}. Silakan hubungi administrator untuk informasi lebih lanjut.`,
+            variant: "destructive"
+          });
+          return { error: { message: "Account suspended" } };
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: "Login berhasil!"
+      });
       
       return { error };
     } catch (error: any) {

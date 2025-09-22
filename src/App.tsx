@@ -21,6 +21,7 @@ import AdminTopUp from "./pages/AdminTopUp";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import Auth from "./pages/Auth";
+import BannedPage from "./pages/BannedPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -41,6 +42,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/banned" element={<BannedPage />} />
               <Route path="/" element={
                 <ProtectedRoute>
                   <Layout>

@@ -25,6 +25,11 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     );
   }
 
+  // Check if user is banned and redirect to auth
+  if (profile?.is_banned) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
   // Redirect to auth if not logged in
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;

@@ -12,6 +12,10 @@ export interface Profile {
   coin_balance: number;
   created_at: string;
   updated_at: string;
+  is_banned: boolean;
+  banned_at: string | null;
+  banned_by: string | null;
+  ban_reason: string | null;
 }
 
 export const useProfile = () => {
