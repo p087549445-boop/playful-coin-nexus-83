@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Search, Filter, Eye, Edit, RotateCcw } from 'lucide-react';
+import { Users, Search, Filter, Eye, Edit, RotateCcw, Ban, UserCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 interface UserProfile {
@@ -19,16 +20,25 @@ interface UserProfile {
   coin_balance: number;
   created_at: string;
   user_id: string;
+  is_banned: boolean;
+  banned_at: string | null;
+  banned_by: string | null;
+  ban_reason: string | null;
 }
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterRole, setFilterRole] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<UserProfile>>({});
+  const [banReason, setBanReason] = useState('');
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -58,11 +68,19 @@ export default function AdminUsers() {
     }
   }, [user]);
 
-  const filteredUsers = users.filter(user => 
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.role.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'banned' && user.is_banned) ||
+      (filterStatus === 'active' && !user.is_banned);
+    
+    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    
+    return matchesSearch && matchesStatus && matchesRole;
+  });
 
   const handleEditUser = (userProfile: UserProfile) => {
     setSelectedUser(userProfile);
@@ -153,6 +171,75 @@ export default function AdminUsers() {
     }
   };
 
+  const handleBanUser = (userProfile: UserProfile) => {
+    setSelectedUser(userProfile);
+    setBanReason('');
+    setBanDialogOpen(true);
+  };
+
+  const handleConfirmBan = async () => {
+    if (!selectedUser || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_banned: true,
+          banned_at: new Date().toISOString(),
+          banned_by: user.id,
+          ban_reason: banReason || 'Tidak ada alasan yang diberikan'
+        })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: "Pengguna berhasil dibanned"
+      });
+
+      setBanDialogOpen(false);
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUnbanUser = async (userProfile: UserProfile) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_banned: false,
+          banned_at: null,
+          banned_by: null,
+          ban_reason: null
+        })
+        .eq('id', userProfile.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: "Pengguna berhasil di-unban"
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -193,10 +280,68 @@ export default function AdminUsers() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
+            <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Filter Pengguna</DialogTitle>
+                  <DialogDescription>
+                    Pilih filter untuk menyaring daftar pengguna
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="status-filter" className="text-right">
+                      Status
+                    </Label>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Pilih status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua</SelectItem>
+                        <SelectItem value="active">Aktif</SelectItem>
+                        <SelectItem value="banned">Dibanned</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="role-filter" className="text-right">
+                      Role
+                    </Label>
+                    <Select value={filterRole} onValueChange={setFilterRole}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Pilih role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua</SelectItem>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setFilterDialogOpen(false)}>
+                    Tutup
+                  </Button>
+                  <Button onClick={() => {
+                    setFilterDialogOpen(false);
+                    toast({
+                      title: "Filter diterapkan",
+                      description: "Daftar pengguna telah difilter sesuai pilihan Anda"
+                    });
+                  }}>
+                    Terapkan Filter
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardContent>
       </Card>
@@ -227,6 +372,11 @@ export default function AdminUsers() {
                     <Badge variant={userProfile.role === 'admin' ? 'default' : 'secondary'}>
                       {userProfile.role}
                     </Badge>
+                    {userProfile.is_banned && (
+                      <Badge variant="destructive">
+                        Banned
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     @{userProfile.username}
@@ -261,6 +411,27 @@ export default function AdminUsers() {
                     <RotateCcw className="h-4 w-4 mr-1" />
                     Reset
                   </Button>
+                  {userProfile.is_banned ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleUnbanUser(userProfile)}
+                      className="text-green-600 hover:text-green-700"
+                    >
+                      <UserCheck className="h-4 w-4 mr-1" />
+                      Unban
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleBanUser(userProfile)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Ban className="h-4 w-4 mr-1" />
+                      Ban
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -391,6 +562,40 @@ export default function AdminUsers() {
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
               Tutup
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban User Dialog */}
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Ban Pengguna</DialogTitle>
+            <DialogDescription>
+              Anda yakin ingin memban pengguna {selectedUser?.full_name}?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="ban_reason" className="text-right">
+                Alasan
+              </Label>
+              <Textarea
+                id="ban_reason"
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                placeholder="Masukkan alasan memban pengguna..."
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmBan}>
+              Ban Pengguna
             </Button>
           </div>
         </DialogContent>

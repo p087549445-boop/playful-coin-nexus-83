@@ -67,30 +67,42 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ban_reason: string | null
+          banned_at: string | null
+          banned_by: string | null
           coin_balance: number
           created_at: string
           full_name: string
           id: string
+          is_banned: boolean
           role: string
           updated_at: string
           user_id: string
           username: string
         }
         Insert: {
+          ban_reason?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
           coin_balance?: number
           created_at?: string
           full_name: string
           id?: string
+          is_banned?: boolean
           role?: string
           updated_at?: string
           user_id: string
           username: string
         }
         Update: {
+          ban_reason?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
           coin_balance?: number
           created_at?: string
           full_name?: string
           id?: string
+          is_banned?: boolean
           role?: string
           updated_at?: string
           user_id?: string
