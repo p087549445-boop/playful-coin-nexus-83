@@ -38,13 +38,6 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    /* Gaming theme colors */
-    --gaming-gold: 45 95% 55%;
-    --gaming-gold-dark: 42 100% 45%;
-    --gaming-dark: 240 6% 10%;
-    --gaming-card: 240 5% 15%;
-    --gaming-border: 240 4% 20%;
-
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -63,10 +56,10 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 240 6% 10%;
+    --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 240 5% 15%;
+    --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
 
     --popover: 222.2 84% 4.9%;

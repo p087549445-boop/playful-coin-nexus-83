@@ -57,13 +57,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        gaming: {
-          gold: "hsl(var(--gaming-gold))",
-          "gold-dark": "hsl(var(--gaming-gold-dark))",
-          dark: "hsl(var(--gaming-dark))",
-          card: "hsl(var(--gaming-card))",
-          border: "hsl(var(--gaming-border))",
-        },
       },
       borderRadius: {
         lg: "var(--radius)",
